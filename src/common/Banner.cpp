@@ -32,6 +32,9 @@ void Trinity::Banner::Show(char const* applicationName, void(*log)(char const* t
     log("      \\/_/\\/_/   \\/_/\\/_/\\/_/\\/_/\\/__/ `/___/> \\");
     log("                                 C O R E  /\\___/");
     log("http://TrinityCore.org                    \\/__/\n");
+    log("\n");
+    log("Official clone for iCe Online server\n");
+    log("http://ice-wow.eu");
 
     if (logExtraInfo)
         logExtraInfo();
