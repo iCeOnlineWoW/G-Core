@@ -40,8 +40,10 @@ void Assert(char const* file, int line, char const* function, char const* messag
 {
     fprintf(stderr, "\n%s:%i in %s ASSERTION FAILED:\n  %s\n",
             file, line, function, message);
+#ifdef EXIT_ON_FALSE_ASSERT
     *((volatile int*)NULL) = 0;
     exit(1);
+#endif
 }
 
 void Assert(char const* file, int line, char const* function, char const* message, char const* format, ...)
@@ -55,8 +57,10 @@ void Assert(char const* file, int line, char const* function, char const* messag
     fflush(stderr);
 
     va_end(args);
+#ifdef EXIT_ON_FALSE_ASSERT
     *((volatile int*)NULL) = 0;
     exit(1);
+#endif
 }
 
 void Fatal(char const* file, int line, char const* function, char const* message, ...)

@@ -32,6 +32,10 @@ GroupSources(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_definitions(-DTRINITY_API_EXPORT_COMMON)
 
+if (EXIT_ON_FALSE_ASSERT)
+  add_definitions(-DEXIT_ON_FALSE_ASSERT)
+endif (EXIT_ON_FALSE_ASSERT)
+
 add_library(common
   ${PRIVATE_PCH_SOURCE}
   ${PRIVATE_SOURCES}
