@@ -1757,6 +1757,7 @@ class TC_GAME_API Unit : public WorldObject
         Player* GetAffectingPlayer() const;
 
         void SetMinion(Minion *minion, bool apply);
+        void GetAllMinions(std::list<TempSummon*>& Minions);
         void GetAllMinionsByEntry(std::list<TempSummon*>& Minions, uint32 entry);
         void RemoveAllMinionsByEntry(uint32 entry);
         void SetCharm(Unit* target, bool apply);

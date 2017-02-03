@@ -7290,6 +7290,16 @@ void Unit::SetMinion(Minion *minion, bool apply)
     }
 }
 
+void Unit::GetAllMinions(std::list<TempSummon*>& Minions)
+{
+    for (Unit::ControlList::iterator itr = m_Controlled.begin(); itr != m_Controlled.end(); ++itr)
+    {
+        Unit* unit = *itr;
+        if (unit->IsSummon())
+            Minions.push_back(unit->ToTempSummon());
+    }
+}
+
 void Unit::GetAllMinionsByEntry(std::list<TempSummon*>& Minions, uint32 entry)
 {
     for (Unit::ControlList::iterator itr = m_Controlled.begin(); itr != m_Controlled.end(); ++itr)

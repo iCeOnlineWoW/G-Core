@@ -2198,7 +2198,7 @@ enum Targets
     TARGET_UNK_117                     = 117,
     TARGET_UNK_118                     = 118,
     TARGET_UNK_119                     = 119,
-    TARGET_UNK_120                     = 120,
+    TARGET_UNIT_ALL_PETS               = 120,
     TARGET_UNK_121                     = 121,
     TARGET_UNK_122                     = 122,
     TARGET_UNK_123                     = 123,

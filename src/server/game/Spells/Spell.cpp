@@ -1463,6 +1463,14 @@ void Spell::SelectImplicitCasterObjectTargets(SpellEffIndex effIndex, SpellImpli
             if (m_caster->GetTypeId() == TYPEID_UNIT && m_caster->IsVehicle())
                 target = m_caster->GetVehicleKit()->GetPassenger(targetType.GetTarget() - TARGET_UNIT_PASSENGER_0);
             break;
+        case TARGET_UNIT_ALL_PETS:
+        {
+            std::list<TempSummon*> summList;
+            m_caster->GetAllMinions(summList);
+            for (TempSummon* summ : summList)
+                AddUnitTarget(summ, 1 << effIndex, checkIfValid);
+            break;
+        }
         default:
             break;
     }
