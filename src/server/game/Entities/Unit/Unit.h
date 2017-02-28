@@ -786,6 +786,7 @@ enum NPCFlags : uint64
     UNIT_NPC_FLAG_BLACK_MARKET          = 0x0080000000,     // black market
     UNIT_NPC_FLAG_ITEM_UPGRADE_MASTER   = 0x0100000000,
     UNIT_NPC_FLAG_GARRISON_ARCHITECT    = 0x0200000000,
+    UNIT_NPC_FLAG_STEERING              = 0x0400000000,
     UNIT_NPC_FLAG_SHIPMENT_CRAFTER      = 0x1000000000,
     UNIT_NPC_FLAG_GARRISON_MISSION_NPC  = 0x2000000000,
     UNIT_NPC_FLAG_TRADESKILL_NPC        = 0x4000000000,
@@ -1673,8 +1674,9 @@ class TC_GAME_API Unit : public WorldObject
         void SendSpellDamageResist(Unit* target, uint32 spellId);
         void SendSpellDamageImmune(Unit* target, uint32 spellId, bool isPeriodic);
 
-        void NearTeleportTo(float x, float y, float z, float orientation, bool casting = false);
-        void SendTeleportPacket(Position& pos);
+        void NearTeleportTo(Position const& pos, bool casting = false);
+        void NearTeleportTo(float x, float y, float z, float orientation, bool casting = false) { NearTeleportTo(Position(x, y, z, orientation), casting); }
+        void SendTeleportPacket(Position const& pos);
         virtual bool UpdatePosition(float x, float y, float z, float ang, bool teleport = false);
         // returns true if unit's position really changed
         virtual bool UpdatePosition(const Position &pos, bool teleport = false);
@@ -1682,7 +1684,7 @@ class TC_GAME_API Unit : public WorldObject
         void UpdateHeight(float newZ);
 
         void SendMoveKnockBack(Player* player, float speedXY, float speedZ, float vcos, float vsin);
-        void KnockbackFrom(float x, float y, float speedXY, float speedZ);
+        void KnockbackFrom(float x, float y, float speedXY, float speedZ, Movement::SpellEffectExtraData const* spellEffectExtraData = nullptr);
         void JumpTo(float speedXY, float speedZ, bool forward = true);
         void JumpTo(WorldObject* obj, float speedZ, bool withOrientation = false);
 
@@ -2246,6 +2248,7 @@ class TC_GAME_API Unit : public WorldObject
         virtual bool CanFly() const = 0;
         bool IsFlying() const   { return m_movementInfo.HasMovementFlag(MOVEMENTFLAG_FLYING | MOVEMENTFLAG_DISABLE_GRAVITY); }
         bool IsFalling() const;
+        virtual bool CanSwim() const;
 
         void RewardRage(uint32 baseRage);
 
@@ -2272,6 +2275,7 @@ class TC_GAME_API Unit : public WorldObject
 
         // Part of Evade mechanics
         time_t GetLastDamagedTime() const { return _lastDamagedTime; }
+        void UpdateLastDamagedTime(SpellInfo const* spellProto);
         void SetLastDamagedTime(time_t val) { _lastDamagedTime = val; }
 
         int32 GetHighestExclusiveSameEffectSpellGroupValue(AuraEffect const* aurEff, AuraType auraType, bool checkMiscValue = false, int32 miscValue = 0) const;

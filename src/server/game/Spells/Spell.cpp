@@ -2512,7 +2512,7 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
     }
 
     // Check for SPELL_ATTR7_INTERRUPT_ONLY_NONPLAYER
-    if (m_spellInfo->HasAttribute(SPELL_ATTR7_INTERRUPT_ONLY_NONPLAYER) && unit->GetTypeId() != TYPEID_PLAYER)
+    if (missInfo == SPELL_MISS_NONE && m_spellInfo->HasAttribute(SPELL_ATTR7_INTERRUPT_ONLY_NONPLAYER) && unit->GetTypeId() != TYPEID_PLAYER)
         caster->CastSpell(unit, SPELL_INTERRUPT_NONPLAYER, true);
 
     if (spellHitTarget)
@@ -3722,15 +3722,18 @@ void Spell::finish(bool ok)
     {
         if (!m_triggeredByAuraSpell)
             m_caster->ToPlayer()->UpdatePotionCooldown(this);
+    }
 
+    if (Player* modOwner = m_caster->GetSpellModOwner())
+    {
         // triggered spell pointer can be not set in some cases
         // this is needed for proper apply of triggered spell mods
-        m_caster->ToPlayer()->SetSpellModTakingSpell(this, true);
+        modOwner->SetSpellModTakingSpell(this, true);
 
         // Take mods after trigger spell (needed for 14177 to affect 48664)
         // mods are taken only on succesfull cast and independantly from targets of the spell
-        m_caster->ToPlayer()->RemoveSpellMods(this);
-        m_caster->ToPlayer()->SetSpellModTakingSpell(this, false);
+        modOwner->RemoveSpellMods(this);
+        modOwner->SetSpellModTakingSpell(this, false);
     }
 
     // Stop Attack for some spells
@@ -5746,7 +5749,7 @@ SpellCastResult Spell::CheckCasterAuras() const
                 dispel_immune |= SpellInfo::GetDispelMask(DispelType(effect->MiscValue));
         }
         // immune movement impairment and loss of control
-        if (m_spellInfo->Id == 42292 || m_spellInfo->Id == 59752 || m_spellInfo->Id == 19574)
+        if (m_spellInfo->Id == 42292 || m_spellInfo->Id == 59752 || m_spellInfo->Id == 19574 || m_spellInfo->Id == 53490)
             mechanic_immune = IMMUNE_TO_MOVEMENT_IMPAIRMENT_AND_LOSS_CONTROL_MASK;
     }
 
@@ -7035,7 +7038,13 @@ void Spell::DoAllEffectOnLaunchTarget(TargetInfo& targetInfo, float* multiplier)
         }
     }
 
+    if (Player* modOwner = m_caster->GetSpellModOwner())
+        modOwner->SetSpellModTakingSpell(this, true);
+
     targetInfo.crit = m_caster->IsSpellCrit(unit, m_spellInfo, m_spellSchoolMask, m_attackType);
+
+    if (Player* modOwner = m_caster->GetSpellModOwner())
+        modOwner->SetSpellModTakingSpell(this, false);
 }
 
 SpellCastResult Spell::CanOpenLock(uint32 effIndex, uint32 lockId, SkillType& skillId, int32& reqSkillValue, int32& skillValue)
