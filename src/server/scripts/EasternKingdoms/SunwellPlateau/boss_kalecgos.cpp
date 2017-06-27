@@ -24,10 +24,15 @@ SDCategory: Sunwell_Plateau
 EndScriptData */
 
 #include "ScriptMgr.h"
+#include "InstanceScript.h"
+#include "Log.h"
+#include "Map.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
+#include "Player.h"
 #include "ScriptedCreature.h"
 #include "sunwell_plateau.h"
-#include "Player.h"
-#include "WorldSession.h"
+#include "TemporarySummon.h"
 
 enum Yells
 {
@@ -368,17 +373,7 @@ public:
             if (isFriendly)
             {
                 me->setDeathState(JUST_DIED);
-
-                Map::PlayerList const& players = me->GetMap()->GetPlayers();
-                if (!players.isEmpty())
-                {
-                    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
-                    {
-                        Player* player = itr->GetSource();
-                        if (player)
-                            me->GetMap()->ToInstanceMap()->PermBindAllPlayers(player);
-                    }
-                }
+                me->GetMap()->ToInstanceMap()->PermBindAllPlayers();
             }
             else
             {
@@ -444,7 +439,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetInstanceAI<boss_kalecAI>(creature);
+        return GetSunwellPlateauAI<boss_kalecAI>(creature);
     }
 
     struct boss_kalecAI : public ScriptedAI
@@ -580,7 +575,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetInstanceAI<boss_sathrovarrAI>(creature);
+        return GetSunwellPlateauAI<boss_sathrovarrAI>(creature);
     }
 
     struct boss_sathrovarrAI : public ScriptedAI

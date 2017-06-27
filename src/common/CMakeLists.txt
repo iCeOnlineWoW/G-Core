@@ -26,6 +26,9 @@ list(APPEND PRIVATE_SOURCES
 if (USE_COREPCH)
   set(PRIVATE_PCH_HEADER PrecompiledHeaders/commonPCH.h)
   set(PRIVATE_PCH_SOURCE PrecompiledHeaders/commonPCH.cpp)
+  if (MSVC)
+    list(INSERT PRIVATE_SOURCES 0 PrecompiledHeaders/commonPCH.cpp)
+  endif (MSVC)
 endif (USE_COREPCH)
 
 GroupSources(${CMAKE_CURRENT_SOURCE_DIR})
@@ -37,7 +40,6 @@ if (EXIT_ON_FALSE_ASSERT)
 endif (EXIT_ON_FALSE_ASSERT)
 
 add_library(common
-  ${PRIVATE_PCH_SOURCE}
   ${PRIVATE_SOURCES}
 )
 
@@ -65,6 +67,8 @@ target_include_directories(common
     ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries(common
+  PRIVATE
+    process
   PUBLIC
     boost
     fmt
@@ -75,9 +79,7 @@ target_link_libraries(common
     openssl
     valgrind
     threads
-    jemalloc
-  PRIVATE
-    process)
+    jemalloc)
 
 add_dependencies(common revision_data.h)
 

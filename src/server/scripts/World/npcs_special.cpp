@@ -17,23 +17,26 @@
  */
 
 #include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "ScriptedGossip.h"
-#include "ScriptedEscortAI.h"
-#include "ObjectMgr.h"
-#include "ScriptMgr.h"
-#include "World.h"
-#include "PassiveAI.h"
-#include "GameEventMgr.h"
-#include "GameObjectAI.h"
-#include "GridNotifiers.h"
-#include "GridNotifiersImpl.h"
-#include "Cell.h"
 #include "CellImpl.h"
-#include "SpellAuras.h"
-#include "Pet.h"
 #include "CreatureTextMgr.h"
+#include "GameEventMgr.h"
+#include "GameObject.h"
+#include "GameObjectAI.h"
+#include "GridNotifiersImpl.h"
+#include "Log.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
+#include "ObjectMgr.h"
+#include "PassiveAI.h"
+#include "Player.h"
+#include "QuestDef.h"
+#include "ScriptedEscortAI.h"
+#include "ScriptedGossip.h"
+#include "SpellAuras.h"
 #include "SpellHistory.h"
+#include "SpellInfo.h"
+#include "SpellMgr.h"
+#include "TemporarySummon.h"
 
 /*########
 # npc_air_force_bots
@@ -243,47 +246,6 @@ public:
     }
 };
 
-/*######
-## npc_lunaclaw_spirit
-######*/
-
-enum LunaclawSpirit
-{
-    QUEST_BODY_HEART_A      = 6001,
-    QUEST_BODY_HEART_H      = 6002,
-
-    TEXT_ID_DEFAULT         = 4714,
-    TEXT_ID_PROGRESS        = 4715
-};
-
-#define GOSSIP_ITEM_GRANT   "You have thought well, spirit. I ask you to grant me the strength of your body and the strength of your heart."
-
-class npc_lunaclaw_spirit : public CreatureScript
-{
-public:
-    npc_lunaclaw_spirit() : CreatureScript("npc_lunaclaw_spirit") { }
-
-    bool OnGossipHello(Player* player, Creature* creature) override
-    {
-        if (player->GetQuestStatus(QUEST_BODY_HEART_A) == QUEST_STATUS_INCOMPLETE || player->GetQuestStatus(QUEST_BODY_HEART_H) == QUEST_STATUS_INCOMPLETE)
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_ITEM_GRANT, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-
-        SendGossipMenuFor(player, TEXT_ID_DEFAULT, creature->GetGUID());
-        return true;
-    }
-
-    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
-    {
-        ClearGossipMenuFor(player);
-        if (action == GOSSIP_ACTION_INFO_DEF + 1)
-        {
-            SendGossipMenuFor(player, TEXT_ID_PROGRESS, creature->GetGUID());
-            player->AreaExploredOrEventHappens(player->GetTeam() == ALLIANCE ? QUEST_BODY_HEART_A : QUEST_BODY_HEART_H);
-        }
-        return true;
-    }
-};
-
 /*########
 # npc_chicken_cluck
 #########*/
@@ -330,7 +292,7 @@ public:
         void UpdateAI(uint32 diff) override
         {
             // Reset flags after a certain time has passed so that the next player has to start the 'event' again
-            if (me->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER))
+            if (me->HasFlag64(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER))
             {
                 if (ResetFlagTimer <= diff)
                 {
@@ -602,7 +564,7 @@ public:
             std::list<Player*> players;
             Trinity::UnitAuraCheck check(true, SPELL_RIBBON_DANCE_COSMETIC);
             Trinity::PlayerListSearcher<Trinity::UnitAuraCheck> searcher(me, players, check);
-            me->VisitNearbyWorldObject(10.0f, searcher);
+            Cell::VisitWorldObjects(me, searcher, 10.0f);
 
             return players.empty();
         }
@@ -1776,14 +1738,8 @@ class npc_wormhole : public CreatureScript
 
 enum PetTrainer
 {
-    MENU_ID_PET_TRAINING     = 4783,
     MENU_ID_PET_UNLEARN      = 6520,
-    NPC_TEXT_PET_FAMILIES    = 13474,
-    NPC_TEXT_PET_TRAINING    = 5838,
-    NPC_TEXT_UNLEARN         = 7722,
-    OPTION_ID_HOW_DO_I_TRAIN = 0,
-    OPTION_ID_UNTRAIN_MY_PET = 1,
-    OPTION_ID_PLEASE_DO      = 0,
+    OPTION_ID_PLEASE_DO      = 0
 };
 
 class npc_pet_trainer : public CreatureScript
@@ -1791,49 +1747,23 @@ class npc_pet_trainer : public CreatureScript
 public:
     npc_pet_trainer() : CreatureScript("npc_pet_trainer") { }
 
-    bool OnGossipHello(Player* player, Creature* creature) /*override*/
+    struct npc_pet_trainerAI : public ScriptedAI
     {
-        ClearGossipMenuFor(player);
+        npc_pet_trainerAI(Creature* creature) : ScriptedAI(creature) { }
 
-        if (creature->IsQuestGiver())
-            player->PrepareQuestMenu(creature->GetGUID());
-
-        if (player->GetPet() && player->GetPet()->getPetType() == HUNTER_PET)
+        void sGossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
         {
-            AddGossipItemFor(player, MENU_ID_PET_TRAINING, OPTION_ID_HOW_DO_I_TRAIN, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-            AddGossipItemFor(player, MENU_ID_PET_TRAINING, OPTION_ID_UNTRAIN_MY_PET, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
-            SendGossipMenuFor(player, NPC_TEXT_PET_TRAINING, creature->GetGUID());
+            if (menuId == MENU_ID_PET_UNLEARN && gossipListId == OPTION_ID_PLEASE_DO)
+            {
+                player->ResetPetTalents();
+                CloseGossipMenuFor(player);
+            }
         }
-        else
-        {
-            AddGossipItemFor(player, MENU_ID_PET_TRAINING, OPTION_ID_HOW_DO_I_TRAIN, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-            SendGossipMenuFor(player, NPC_TEXT_PET_TRAINING, creature->GetGUID());
-        }
-        return true;
-    }
+    };
 
-    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) /*override*/
+    CreatureAI* GetAI(Creature* creature) const override
     {
-        ClearGossipMenuFor(player);
-        switch (action)
-        {
-            case GOSSIP_ACTION_INFO_DEF + 1:
-                SendGossipMenuFor(player, NPC_TEXT_PET_FAMILIES, creature->GetGUID());
-                break;
-            case GOSSIP_ACTION_INFO_DEF + 2:
-                {
-                    AddGossipItemFor(player, MENU_ID_PET_UNLEARN, OPTION_ID_PLEASE_DO, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
-                    SendGossipMenuFor(player, NPC_TEXT_UNLEARN, creature->GetGUID());
-                }
-                break;
-            case GOSSIP_ACTION_INFO_DEF + 3:
-                {
-                    player->ResetPetTalents();
-                    CloseGossipMenuFor(player);
-                }
-                break;
-        }
-        return true;
+        return new npc_pet_trainerAI(creature);
     }
 };
 
@@ -2107,10 +2037,10 @@ public:
                     break;
             }
 
-            const SpellInfo* spellInfo = sSpellMgr->GetSpellInfo(spellId);
-
-            if (spellInfo && spellInfo->GetEffect(EFFECT_0)->Effect == SPELL_EFFECT_SUMMON_OBJECT_WILD)
-                return spellInfo->GetEffect(EFFECT_0)->MiscValue;
+            if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId))
+                if (SpellEffectInfo const* effect0 = spellInfo->GetEffect(EFFECT_0))
+                    if (effect0->Effect == SPELL_EFFECT_SUMMON_OBJECT_WILD)
+                        return effect0->MiscValue;
 
             return 0;
         }
@@ -2152,7 +2082,7 @@ public:
 
                 float displacement = 0.7f;
                 for (uint8 i = 0; i < 4; i++)
-                    me->SummonGameObject(GetFireworkGameObjectId(), me->GetPositionX() + (i % 2 == 0 ? displacement : -displacement), me->GetPositionY() + (i > 1 ? displacement : -displacement), me->GetPositionZ() + 4.0f, me->GetOrientation(), G3D::Quat(), 1);
+                    me->SummonGameObject(GetFireworkGameObjectId(), me->GetPositionX() + (i % 2 == 0 ? displacement : -displacement), me->GetPositionY() + (i > 1 ? displacement : -displacement), me->GetPositionZ() + 4.0f, me->GetOrientation(), QuaternionData(), 1);
             }
             else
                 //me->CastSpell(me, GetFireworkSpell(me->GetEntry()), true);
@@ -2530,7 +2460,7 @@ public:
                 })
                 .Schedule(Seconds(1), [this](TaskContext context)
                 {
-                    if ((me->HasAura(SPELL_AURA_TIRED_S) || me->HasAura(SPELL_AURA_TIRED_G)) && me->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_BANKER | UNIT_NPC_FLAG_MAILBOX | UNIT_NPC_FLAG_VENDOR))
+                    if ((me->HasAura(SPELL_AURA_TIRED_S) || me->HasAura(SPELL_AURA_TIRED_G)) && me->HasFlag64(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_BANKER | UNIT_NPC_FLAG_MAILBOX | UNIT_NPC_FLAG_VENDOR))
                         me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_BANKER | UNIT_NPC_FLAG_MAILBOX | UNIT_NPC_FLAG_VENDOR);
                     context.Repeat();
                 });
@@ -2609,7 +2539,6 @@ public:
 void AddSC_npcs_special()
 {
     new npc_air_force_bots();
-    new npc_lunaclaw_spirit();
     new npc_chicken_cluck();
     new npc_dancing_flames();
     new npc_torch_tossing_target_bunny_controller();

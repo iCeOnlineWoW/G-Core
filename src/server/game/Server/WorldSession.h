@@ -24,38 +24,36 @@
 #define __WORLDSESSION_H
 
 #include "Common.h"
-#include "SharedDefines.h"
-#include "DatabaseEnv.h"
-#include "World.h"
+#include "DatabaseEnvFwd.h"
+#include "LockedQueue.h"
+#include "ObjectGuid.h"
 #include "Packet.h"
-#include "Cryptography/BigNumber.h"
-#include "AccountMgr.h"
+#include "QueryCallbackProcessor.h"
+#include "SharedDefines.h"
+#include <array>
+#include <set>
+#include <unordered_map>
 #include <unordered_set>
 
 class BattlePetMgr;
-class Channel;
+class BigNumber;
+class BlackMarketEntry;
 class CollectionMgr;
 class Creature;
-class BlackMarketEntry;
-class GameObject;
 class InstanceSave;
 class Item;
 class LoginQueryHolder;
-class Object;
 class Player;
-class Quest;
-class SpellCastTargets;
 class Unit;
 class Warden;
-class WorldPacket;
 class WorldSession;
 class WorldSocket;
-struct AreaTableEntry;
 struct AuctionEntry;
+struct BlackMarketTemplate;
 struct DeclinedName;
 struct ItemTemplate;
 struct MovementInfo;
-struct BlackMarketTemplate;
+struct Position;
 
 namespace lfg
 {
@@ -232,7 +230,9 @@ namespace WorldPackets
 
     namespace Channel
     {
+        class ChannelCommand;
         class ChannelPlayerCommand;
+        class ChannelPassword;
         class JoinChannel;
         class LeaveChannel;
     }
@@ -253,6 +253,11 @@ namespace WorldPackets
         class ChatRegisterAddonPrefixes;
         class ChatUnregisterAllAddonPrefixes;
         class ChatReportIgnored;
+    }
+
+    namespace Collections
+    {
+        class CollectionItemSetFavorite;
     }
 
     namespace Combat
@@ -346,6 +351,12 @@ namespace WorldPackets
         class LFGuildSetGuildPost;
     }
 
+    namespace Hotfix
+    {
+        class DBQueryBulk;
+        class HotfixQuery;
+    }
+
     namespace Inspect
     {
         class Inspect;
@@ -435,10 +446,10 @@ namespace WorldPackets
         class OpeningCinematic;
         class TogglePvP;
         class SetPvP;
-        class WorldTeleport;
         class MountSpecial;
         class SetTaxiBenchmarkMode;
         class MountSetFavorite;
+        class PvpPrestigeRankUp;
     }
 
     namespace Movement
@@ -448,6 +459,7 @@ namespace WorldPackets
         class MoveTeleportAck;
         class MovementAckMessage;
         class MovementSpeedAck;
+        class MoveKnockBackAck;
         class SetActiveMover;
         class MoveSetCollisionHeightAck;
         class MoveTimeSkipped;
@@ -539,7 +551,6 @@ namespace WorldPackets
         class QueryPlayerName;
         class QueryPageText;
         class QueryNPCText;
-        class DBQueryBulk;
         class QueryGameObject;
         class QueryCorpseLocationFromClient;
         class QueryCorpseTransport;
@@ -547,6 +558,7 @@ namespace WorldPackets
         class QueryPetName;
         class QuestPOIQuery;
         class QueryQuestCompletionNPCs;
+        class QueryRealmName;
         class ItemTextQuery;
     }
 
@@ -583,7 +595,6 @@ namespace WorldPackets
     {
         class AccountToysUpdate;
         class AddToy;
-        class ToySetFavorite;
         class UseToy;
     }
 
@@ -689,7 +700,6 @@ namespace WorldPackets
     namespace Transmogrification
     {
         class TransmogrifyItems;
-        class TransmogAppearanceSetFavorite;
     }
 
     namespace Vehicle
@@ -703,12 +713,6 @@ namespace WorldPackets
         class EjectPassenger;
         class RequestVehicleExit;
         class MoveSetVehicleRecIdAck;
-    }
-
-    namespace Voice
-    {
-        class VoiceSessionEnable;
-        class SetActiveVoiceChannel;
     }
 
     namespace VoidStorage
@@ -766,41 +770,6 @@ enum AccountDataType
 #define GLOBAL_CACHE_MASK           0x15
 #define PER_CHARACTER_CACHE_MASK    0xEA
 
-enum TutorialAction : uint8
-{
-    TUTORIAL_ACTION_UPDATE  = 0,
-    TUTORIAL_ACTION_CLEAR   = 1,
-    TUTORIAL_ACTION_RESET   = 2
-};
-
-/*
-enum Tutorials
-{
-    TUTORIAL_TALENT                   = 0,
-    TUTORIAL_SPEC                     = 1,
-    TUTORIAL_GLYPH                    = 2,
-    TUTORIAL_SPELLBOOK                = 3,
-    TUTORIAL_PROFESSIONS              = 4,
-    TUTORIAL_CORE_ABILITITES          = 5,
-    TUTORIAL_PET_JOURNAL              = 6,
-    TUTORIAL_WHAT_HAS_CHANGED         = 7,
-    TUTORIAL_GARRISON_BUILDING        = 8,
-    TUTORIAL_GARRISON_MISSION_LIST    = 9,
-    TUTORIAL_GARRISON_MISSION_PAGE    = 10,
-    TUTORIAL_GARRISON_LANDING         = 11,
-    TUTORIAL_GARRISON_ZONE_ABILITY    = 12,
-    TUTORIAL_WORLD_MAP_FRAME          = 13,
-    TUTORIAL_CLEAN_UP_BAGS            = 14,
-    TUTORIAL_BAG_SETTINGS             = 15,
-    TUTORIAL_REAGENT_BANK_UNLOCK      = 16,
-    TUTORIAL_TOYBOX_FAVORITE          = 17,
-    TUTORIAL_TOYBOX_MOUSEWHEEL_PAGING = 18,
-    TUTORIAL_LFG_LIST                 = 19
-};
-*/
-
-#define MAX_ACCOUNT_TUTORIAL_VALUES 8
-
 struct AccountData
 {
     time_t Time = 0;
@@ -813,14 +782,6 @@ enum PartyOperation
     PARTY_OP_UNINVITE = 1,
     PARTY_OP_LEAVE    = 2,
     PARTY_OP_SWAP     = 4
-};
-
-enum BarberShopResult
-{
-    BARBER_SHOP_RESULT_SUCCESS      = 0,
-    BARBER_SHOP_RESULT_NO_MONEY     = 1,
-    BARBER_SHOP_RESULT_NOT_ON_CHAIR = 2,
-    BARBER_SHOP_RESULT_NO_MONEY_2   = 3
 };
 
 enum BFLeaveReason
@@ -856,9 +817,6 @@ enum DeclinedNameResult
     DECLINED_NAMES_RESULT_SUCCESS = 0,
     DECLINED_NAMES_RESULT_ERROR   = 1
 };
-
-#define DB2_REPLY_SPARSE 2442913102
-#define DB2_REPLY_ITEM   1344507586
 
 //class to deal with packet processing
 //allows to determine if next packet is safe to be processed
@@ -935,6 +893,7 @@ class TC_GAME_API WorldSession
 
         void SendAuthResponse(uint32 code, bool queued, uint32 queuePos = 0);
         void SendClientCacheVersion(uint32 version);
+        void SendHotfixList(int32 version);
 
         void InitializeSession();
         void InitializeSessionCallback(SQLQueryHolder* realmHolder, SQLQueryHolder* holder);
@@ -996,8 +955,8 @@ class TC_GAME_API WorldSession
 
         void SendNameQueryOpcode(ObjectGuid guid);
 
-        void SendTrainerList(ObjectGuid guid);
-        void SendTrainerList(ObjectGuid guid, std::string const& strTitle);
+        void SendTrainerList(ObjectGuid guid, uint32 index = 0);
+        void SendTrainerList(ObjectGuid guid, std::string const& strTitle, uint32 index = 0);
         void SendListInventory(ObjectGuid guid);
         void SendShowBank(ObjectGuid guid);
         bool CanOpenMailBox(ObjectGuid guid);
@@ -1038,8 +997,6 @@ class TC_GAME_API WorldSession
                 _tutorialsChanged = true;
             }
         }
-        //used with item_page table
-        bool SendItemInfo(uint32 itemid, WorldPacket data);
         // Auction
         void SendAuctionHello(ObjectGuid guid, Creature* unit);
 
@@ -1102,10 +1059,7 @@ class TC_GAME_API WorldSession
             m_timeOutTime -= int32(diff);
         }
 
-        void ResetTimeOutTime()
-        {
-            m_timeOutTime = int32(sWorld->getIntConfig(CONFIG_SOCKET_TIMEOUTTIME));
-        }
+        void ResetTimeOutTime();
 
         bool IsConnectionIdle() const
         {
@@ -1161,15 +1115,11 @@ class TC_GAME_API WorldSession
         void SendCharCustomize(ResponseCodes result, WorldPackets::Character::CharCustomizeInfo const* customizeInfo);
         void SendCharFactionChange(ResponseCodes result, WorldPackets::Character::CharRaceOrFactionChangeInfo const* factionChangeInfo);
         void SendSetPlayerDeclinedNamesResult(DeclinedNameResult result, ObjectGuid guid);
-        void SendBarberShopResult(BarberShopResult result);
         void SendUndeleteCooldownStatusResponse(uint32 currentCooldown, uint32 maxCooldown);
         void SendUndeleteCharacterResponse(CharacterUndeleteResult result, WorldPackets::Character::CharacterUndeleteInfo const* undeleteInfo);
 
         // played time
         void HandlePlayedTime(WorldPackets::Character::RequestPlayedTime& packet);
-
-        // new
-        void HandleLookingForGroup(WorldPacket& recvPacket);
 
         // cemetery/graveyard related
         void HandlePortGraveyard(WorldPackets::Misc::PortGraveyard& packet);
@@ -1187,13 +1137,12 @@ class TC_GAME_API WorldSession
         void HandleRepairItemOpcode(WorldPackets::Item::RepairItem& packet);
 
         // Knockback
-        void HandleMoveKnockBackAck(WorldPackets::Movement::MovementAckMessage& movementAck);
+        void HandleMoveKnockBackAck(WorldPackets::Movement::MoveKnockBackAck& movementAck);
 
         void HandleMoveTeleportAck(WorldPackets::Movement::MoveTeleportAck& packet);
         void HandleForceSpeedChangeAck(WorldPackets::Movement::MovementSpeedAck& packet);
         void HandleSetCollisionHeightAck(WorldPackets::Movement::MoveSetCollisionHeightAck& setCollisionHeightAck);
 
-        void HandlePingOpcode(WorldPacket& recvPacket);
         void HandleRepopRequest(WorldPackets::Misc::RepopRequest& packet);
         void HandleAutostoreLootItemOpcode(WorldPackets::Loot::LootItem& packet);
         void HandleLootMoneyOpcode(WorldPackets::Loot::LootMoney& packet);
@@ -1247,15 +1196,15 @@ class TC_GAME_API WorldSession
         void HandleSetActionButtonOpcode(WorldPackets::Spells::SetActionButton& packet);
 
         void HandleGameObjectUseOpcode(WorldPackets::GameObject::GameObjUse& packet);
-        void HandleMeetingStoneInfo(WorldPacket& recPacket);
         void HandleGameobjectReportUse(WorldPackets::GameObject::GameObjReportUse& packet);
 
         void HandleNameQueryOpcode(WorldPackets::Query::QueryPlayerName& packet);
         void HandleQueryTimeOpcode(WorldPackets::Query::QueryTime& queryTime);
         void HandleCreatureQuery(WorldPackets::Query::QueryCreature& packet);
-        void HandleDBQueryBulk(WorldPackets::Query::DBQueryBulk& packet);
-
         void HandleGameObjectQueryOpcode(WorldPackets::Query::QueryGameObject& packet);
+
+        void HandleDBQueryBulk(WorldPackets::Hotfix::DBQueryBulk& dbQuery);
+        void HandleHotfixQuery(WorldPackets::Hotfix::HotfixQuery& hotfixQuery);
 
         void HandleMoveWorldportAckOpcode(WorldPackets::Movement::WorldPortResponse& packet);
         void HandleMoveWorldportAck();                // for server-side calls
@@ -1428,7 +1377,6 @@ class TC_GAME_API WorldSession
         void HandleQueryNextMailTime(WorldPackets::Mail::MailQueryNextMailTime& packet);
         void HandleCancelChanneling(WorldPackets::Spells::CancelChannelling& cancelChanneling);
 
-        void SendItemPageInfo(ItemTemplate* itemProto);
         void HandleSplitItemOpcode(WorldPackets::Item::SplitItem& splitItem);
         void HandleSwapInvItemOpcode(WorldPackets::Item::SwapInvItem& swapInvItem);
         void HandleDestroyItemOpcode(WorldPackets::Item::DestroyItem& destroyItem);
@@ -1472,11 +1420,9 @@ class TC_GAME_API WorldSession
         void HandleQuestgiverChooseRewardOpcode(WorldPackets::Quest::QuestGiverChooseReward& packet);
         void HandleQuestgiverRequestRewardOpcode(WorldPackets::Quest::QuestGiverRequestReward& packet);
         void HandleQuestQueryOpcode(WorldPackets::Quest::QueryQuestInfo& packet);
-        void HandleQuestgiverCancel(WorldPacket& recvData);
         void HandleQuestLogRemoveQuest(WorldPackets::Quest::QuestLogRemoveQuest& packet);
         void HandleQuestConfirmAccept(WorldPackets::Quest::QuestConfirmAccept& packet);
         void HandleQuestgiverCompleteQuest(WorldPackets::Quest::QuestGiverCompleteQuest& packet);
-        void HandleQuestgiverQuestAutoLaunch(WorldPacket& recvPacket);
         void HandlePushQuestToParty(WorldPackets::Quest::PushQuestToParty& packet);
         void HandleQuestPushResult(WorldPackets::Quest::QuestPushResult& packet);
         void HandleRequestWorldQuestUpdate(WorldPackets::Quest::RequestWorldQuestUpdate& packet);
@@ -1509,15 +1455,9 @@ class TC_GAME_API WorldSession
 
         void HandleJoinChannel(WorldPackets::Channel::JoinChannel& packet);
         void HandleLeaveChannel(WorldPackets::Channel::LeaveChannel& packet);
-
-        template<void(Channel::*CommandFunction)(Player const*)>
-        void HandleChannelCommand(WorldPackets::Channel::ChannelPlayerCommand& packet);
-
-        template<void(Channel::*CommandFunction)(Player const*, std::string const&)>
+        void HandleChannelCommand(WorldPackets::Channel::ChannelCommand& packet);
         void HandleChannelPlayerCommand(WorldPackets::Channel::ChannelPlayerCommand& packet);
-
-        void HandleVoiceSessionEnable(WorldPackets::Voice::VoiceSessionEnable& packet);
-        void HandleSetActiveVoiceChannel(WorldPackets::Voice::SetActiveVoiceChannel& packet);
+        void HandleChannelPassword(WorldPackets::Channel::ChannelPassword& channelPassword);
 
         void HandleCompleteCinematic(WorldPackets::Misc::CompleteCinematic& packet);
         void HandleNextCinematicCamera(WorldPackets::Misc::NextCinematicCamera& packet);
@@ -1530,7 +1470,7 @@ class TC_GAME_API WorldSession
         //Pet
         void HandlePetAction(WorldPackets::Pet::PetAction& packet);
         void HandlePetStopAttack(WorldPackets::Pet::PetStopAttack& packet);
-        void HandlePetActionHelper(Unit* pet, ObjectGuid guid1, uint32 spellid, uint16 flag, ObjectGuid guid2, float x, float y, float z);
+        void HandlePetActionHelper(Unit* pet, ObjectGuid guid1, uint32 spellid, uint16 flag, ObjectGuid guid2, Position const& pos);
         void HandleQueryPetName(WorldPackets::Query::QueryPetName& packet);
         void HandlePetSetAction(WorldPackets::Pet::PetSetAction& packet);
         void HandlePetAbandon(WorldPackets::Pet::PetAbandon& packet);
@@ -1572,7 +1512,6 @@ class TC_GAME_API WorldSession
         void HandleBfQueueExitRequest(WorldPackets::Battlefield::BFMgrQueueExitRequest& bfMgrQueueExitRequest);
 
 
-        void HandleWorldTeleportOpcode(WorldPackets::Misc::WorldTeleport& worldTeleport);
         void HandleMinimapPingOpcode(WorldPackets::Party::MinimapPingClient& packet);
         void HandleRandomRollOpcode(WorldPackets::Misc::RandomRollClient& packet);
         void HandleFarSightOpcode(WorldPackets::Misc::FarSight& packet);
@@ -1672,9 +1611,11 @@ class TC_GAME_API WorldSession
         void HandleVoidSwapItem(WorldPackets::VoidStorage::SwapVoidItem& swapVoidItem);
         void SendVoidStorageTransferResult(VoidTransferError result);
 
+        // Collections
+        void HandleCollectionItemSetFavorite(WorldPackets::Collections::CollectionItemSetFavorite& collectionItemSetFavorite);
+
         // Transmogrification
         void HandleTransmogrifyItems(WorldPackets::Transmogrification::TransmogrifyItems& transmogrifyItems);
-        void HandleTransmogAppearanceSetFavorite(WorldPackets::Transmogrification::TransmogAppearanceSetFavorite& transmogAppearanceSetFavorite);
 
         // Miscellaneous
         void HandleSpellClick(WorldPackets::Spells::SpellClick& spellClick);
@@ -1693,7 +1634,6 @@ class TC_GAME_API WorldSession
 
         // Toys
         void HandleAddToy(WorldPackets::Toy::AddToy& packet);
-        void HandleToySetFavorite(WorldPackets::Toy::ToySetFavorite& packet);
         void HandleUseToy(WorldPackets::Toy::UseToy& packet);
 
         void HandleMountSetFavorite(WorldPackets::Misc::MountSetFavorite& mountSetFavorite);
@@ -1744,6 +1684,8 @@ class TC_GAME_API WorldSession
 
         std::unordered_map<uint32, uint8> const& GetRealmCharacterCounts() const { return _realmCharacterCounts; }
 
+        void HandleQueryRealmName(WorldPackets::Query::QueryRealmName& queryRealmName);
+
         // Artifact
         void HandleArtifactAddPower(WorldPackets::Artifact::ArtifactAddPower& artifactAddPower);
         void HandleArtifactSetAppearance(WorldPackets::Artifact::ArtifactSetAppearance& artifactSetAppearance);
@@ -1751,6 +1693,9 @@ class TC_GAME_API WorldSession
 
         // Scenario
         void HandleQueryScenarioPOI(WorldPackets::Scenario::QueryScenarioPOI& queryScenarioPOI);
+
+        // Honor
+        void HandlePvpPrestigeRankUp(WorldPackets::Misc::PvpPrestigeRankUp& /*pvpPrestigeRankUp*/);
 
         union ConnectToKey
         {
@@ -1780,7 +1725,7 @@ class TC_GAME_API WorldSession
         {
             friend class World;
             public:
-                DosProtection(WorldSession* s) : Session(s), _policy((Policy)sWorld->getIntConfig(CONFIG_PACKET_SPOOF_POLICY)) { }
+                DosProtection(WorldSession* s);
                 bool EvaluateOpcode(WorldPacket& p, time_t time) const;
             protected:
                 enum Policy

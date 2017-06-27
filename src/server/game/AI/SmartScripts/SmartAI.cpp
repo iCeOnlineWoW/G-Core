@@ -15,15 +15,16 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "DatabaseEnv.h"
-#include "ObjectMgr.h"
-#include "ObjectDefines.h"
-#include "GridDefines.h"
-#include "GridNotifiers.h"
-#include "SpellMgr.h"
-#include "Cell.h"
-#include "Group.h"
 #include "SmartAI.h"
+#include "DB2Structure.h"
+#include "Creature.h"
+#include "GameObject.h"
+#include "Group.h"
+#include "Log.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
+#include "PetDefines.h"
+#include "Player.h"
 #include "ScriptMgr.h"
 
 SmartAI::SmartAI(Creature* c) : CreatureAI(c)
@@ -979,7 +980,42 @@ class SmartTrigger : public AreaTriggerScript
         }
 };
 
+class SmartScene : public SceneScript
+{
+public:
+    SmartScene() : SceneScript("SmartScene") { }
+
+    void OnSceneStart(Player* player, uint32 /*sceneInstanceID*/, SceneTemplate const* sceneTemplate) override
+    {
+        SmartScript smartScript;
+        smartScript.OnInitialize(nullptr, nullptr, sceneTemplate);
+        smartScript.ProcessEventsFor(SMART_EVENT_SCENE_START, player);
+    }
+
+    void OnSceneTriggerEvent(Player* player, uint32 /*sceneInstanceID*/, SceneTemplate const* sceneTemplate, std::string const& triggerName) override
+    {
+        SmartScript smartScript;
+        smartScript.OnInitialize(nullptr, nullptr, sceneTemplate);
+        smartScript.ProcessEventsFor(SMART_EVENT_SCENE_TRIGGER, player, 0, 0, false, nullptr, nullptr, triggerName);
+    }
+
+    void OnSceneCancel(Player* player, uint32 /*sceneInstanceID*/, SceneTemplate const* sceneTemplate) override
+    {
+        SmartScript smartScript;
+        smartScript.OnInitialize(nullptr, nullptr, sceneTemplate);
+        smartScript.ProcessEventsFor(SMART_EVENT_SCENE_CANCEL, player);
+    }
+
+    void OnSceneComplete(Player* player, uint32 /*sceneInstanceID*/, SceneTemplate const* sceneTemplate) override
+    {
+        SmartScript smartScript;
+        smartScript.OnInitialize(nullptr, nullptr, sceneTemplate);
+        smartScript.ProcessEventsFor(SMART_EVENT_SCENE_COMPLETE, player);
+    }
+};
+
 void AddSC_SmartScripts()
 {
     new SmartTrigger();
+    new SmartScene();
 }
