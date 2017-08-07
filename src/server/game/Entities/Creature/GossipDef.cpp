@@ -41,27 +41,27 @@ GossipMenu::~GossipMenu()
     ClearMenu();
 }
 
-void GossipMenu::AddMenuItem(int32 menuItemId, uint8 icon, std::string const& message, uint32 sender, uint32 action, std::string const& boxMessage, uint32 boxMoney, bool coded /*= false*/)
+uint32 GossipMenu::AddMenuItem(int32 optionIndex, uint8 icon, std::string const& message, uint32 sender, uint32 action, std::string const& boxMessage, uint32 boxMoney, bool coded /*= false*/)
 {
     ASSERT(_menuItems.size() <= GOSSIP_MAX_MENU_ITEMS);
 
     // Find a free new id - script case
-    if (menuItemId == -1)
+    if (optionIndex == -1)
     {
-        menuItemId = 0;
+        optionIndex = 0;
         if (!_menuItems.empty())
         {
             for (GossipMenuItemContainer::const_iterator itr = _menuItems.begin(); itr != _menuItems.end(); ++itr)
             {
-                if (int32(itr->first) > menuItemId)
+                if (int32(itr->first) > optionIndex)
                     break;
 
-                menuItemId = itr->first + 1;
+                optionIndex = itr->first + 1;
             }
         }
     }
 
-    GossipMenuItem& menuItem = _menuItems[menuItemId];
+    GossipMenuItem& menuItem = _menuItems[optionIndex];
 
     menuItem.MenuItemIcon    = icon;
     menuItem.Message         = message;
@@ -70,6 +70,7 @@ void GossipMenu::AddMenuItem(int32 menuItemId, uint8 icon, std::string const& me
     menuItem.OptionType      = action;
     menuItem.BoxMessage      = boxMessage;
     menuItem.BoxMoney        = boxMoney;
+    return optionIndex;
 }
 
 /**
@@ -131,16 +132,18 @@ void GossipMenu::AddMenuItem(uint32 menuId, uint32 menuItemId, uint32 sender, ui
         }
 
         /// Add menu item with existing method. Menu item id -1 is also used in ADD_GOSSIP_ITEM macro.
-        AddMenuItem(-1, itr->second.OptionIcon, strOptionText, sender, action, strBoxText, itr->second.BoxMoney, itr->second.BoxCoded);
+        uint32 optionIndex = AddMenuItem(-1, itr->second.OptionIcon, strOptionText, sender, action, strBoxText, itr->second.BoxMoney, itr->second.BoxCoded);
+        AddGossipMenuItemData(optionIndex, itr->second.ActionMenuId, itr->second.ActionPoiId, itr->second.TrainerId);
     }
 }
 
-void GossipMenu::AddGossipMenuItemData(uint32 menuItemId, uint32 gossipActionMenuId, uint32 gossipActionPoi)
+void GossipMenu::AddGossipMenuItemData(uint32 optionIndex, uint32 gossipActionMenuId, uint32 gossipActionPoi, uint32 trainerId)
 {
-    GossipMenuItemData& itemData = _menuItemData[menuItemId];
+    GossipMenuItemData& itemData = _menuItemData[optionIndex];
 
     itemData.GossipActionMenuId  = gossipActionMenuId;
     itemData.GossipActionPoi     = gossipActionPoi;
+    itemData.TrainerId           = trainerId;
 }
 
 uint32 GossipMenu::GetMenuItemSender(uint32 menuItemId) const
@@ -168,6 +171,15 @@ bool GossipMenu::IsMenuItemCoded(uint32 menuItemId) const
         return false;
 
     return itr->second.IsCoded;
+}
+
+bool GossipMenu::HasMenuItemType(uint32 optionType) const
+{
+    for (auto const& menuItemPair : _menuItems)
+        if (menuItemPair.second.OptionType == optionType)
+            return true;
+
+    return false;
 }
 
 void GossipMenu::ClearMenu()
@@ -331,9 +343,9 @@ void QuestMenu::ClearMenu()
     _questMenuItems.clear();
 }
 
-void PlayerMenu::SendQuestGiverQuestList(ObjectGuid guid)
+void PlayerMenu::SendQuestGiverQuestListMessage(ObjectGuid guid)
 {
-    WorldPackets::Quest::QuestGiverQuestList questList;
+    WorldPackets::Quest::QuestGiverQuestListMessage questList;
     questList.QuestGiverGUID = guid;
 
     if  (QuestGreeting const* questGreeting = sObjectMgr->GetQuestGreeting(guid))
@@ -368,7 +380,7 @@ void PlayerMenu::SendQuestGiverQuestList(ObjectGuid guid)
 
             bool repeatable = false; // NYI
 
-            questList.GossipTexts.emplace_back(questID, questMenuItem.QuestIcon, quest->GetQuestLevel(), quest->GetFlags(), quest->GetFlagsEx(), repeatable, title);
+            questList.QuestDataText.emplace_back(questID, questMenuItem.QuestIcon, quest->GetQuestLevel(), quest->GetFlags(), quest->GetFlagsEx(), repeatable, title);
         }
     }
 
@@ -703,7 +715,10 @@ void PlayerMenu::SendQuestGiverRequestItems(Quest const* quest, ObjectGuid npcGU
     packet.QuestFlags[0] = quest->GetFlags();
     packet.QuestFlags[1] = quest->GetFlagsEx();
     packet.SuggestPartyMembers = quest->GetSuggestedPlayers();
-    packet.StatusFlags = 0xDF; // Unk, send common value
+
+    // incomplete: FD
+    // incomplete quest with item objective but item objective is complete DD
+    packet.StatusFlags = canComplete ? 0xFF : 0xFD;
 
     packet.MoneyToGet = 0;
     for (QuestObjective const& obj : quest->GetObjectives())

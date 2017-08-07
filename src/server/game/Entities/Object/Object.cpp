@@ -667,11 +667,11 @@ void Object::BuildMovementUpdate(ByteBuffer* data, uint32 flags) const
         }
     }
 
-    //if (GameObject)
+    //if (HasGameObject)
     //{
     //    *data << uint32(WorldEffectID);
-
     //    data->WriteBit(bit8);
+    //    data->FlushBits();
     //    if (bit8)
     //        *data << uint32(Int1);
     //}
@@ -679,7 +679,8 @@ void Object::BuildMovementUpdate(ByteBuffer* data, uint32 flags) const
     //if (SmoothPhasing)
     //{
     //    data->WriteBit(ReplaceActive);
-    //    data->WriteBit(HasReplaceObjectt);
+    //    data->WriteBit(HasReplaceObject);
+    //    data->FlushBits();
     //    if (HasReplaceObject)
     //        *data << ObjectGuid(ReplaceObject);
     //}
@@ -688,10 +689,12 @@ void Object::BuildMovementUpdate(ByteBuffer* data, uint32 flags) const
     //{
     //    data->WriteBit(HasLocalScriptData);
     //    data->WriteBit(HasPetBattleFullUpdate);
+    //    data->FlushBits();
 
     //    if (HasLocalScriptData)
     //    {
     //        data->WriteBits(Data.length(), 7);
+    //        data->FlushBits();
     //        data->WriteString(Data);
     //    }
 
@@ -707,6 +710,7 @@ void Object::BuildMovementUpdate(ByteBuffer* data, uint32 flags) const
     //            *data << uint8(Players[i].InputFlags);
 
     //            data->WriteBits(Players[i].Pets.size(), 2);
+    //            data->FlushBits();
     //            for (std::size_t j = 0; j < Players[i].Pets.size(); ++j)
     //            {
     //                *data << ObjectGuid(Players[i].Pets[j].BattlePetGUID);
@@ -752,6 +756,7 @@ void Object::BuildMovementUpdate(ByteBuffer* data, uint32 flags) const
     //                }
 
     //                data->WriteBits(Players[i].Pets[j].CustomName.length(), 7);
+    //                data->FlushBits();
     //                data->WriteString(Players[i].Pets[j].CustomName);
     //            }
     //        }
@@ -786,6 +791,7 @@ void Object::BuildMovementUpdate(ByteBuffer* data, uint32 flags) const
     //        *data << ObjectGuid(InitialWildPetGUID);
     //        data->WriteBit(IsPVP);
     //        data->WriteBit(CanAwardXP);
+    //        data->FlushBits();
     //    }
     //}
 
@@ -793,6 +799,7 @@ void Object::BuildMovementUpdate(ByteBuffer* data, uint32 flags) const
     //{
     //    data->WriteBit(HasSceneInstanceIDs);
     //    data->WriteBit(HasRuneState);
+    //    data->FlushBits();
     //    if (HasSceneInstanceIDs)
     //    {
     //        *data << uint32(SceneInstanceIDs.size());
@@ -2224,13 +2231,13 @@ bool WorldObject::CanDetectStealthOf(WorldObject const* obj, bool checkAlert) co
         // Level difference: 5 point / level, starting from level 1.
         // There may be spells for this and the starting points too, but
         // not in the DBCs of the client.
-        detectionValue += int32(getLevelForTarget(obj) - 1) * 5;
+        detectionValue += int32(GetLevelForTarget(obj) - 1) * 5;
 
         // Apply modifiers
         detectionValue += m_stealthDetect.GetValue(StealthType(i));
         if (go)
             if (Unit* owner = go->GetOwner())
-                detectionValue -= int32(owner->getLevelForTarget(this) - 1) * 5;
+                detectionValue -= int32(owner->GetLevelForTarget(this) - 1) * 5;
 
         detectionValue -= obj->m_stealth.GetValue(StealthType(i));
 
@@ -2263,19 +2270,19 @@ void Object::ForceValuesUpdateAtIndex(uint32 i)
     AddToObjectUpdateIfNeeded();
 }
 
-void WorldObject::SendMessageToSet(WorldPacket const* data, bool self)
+void WorldObject::SendMessageToSet(WorldPacket const* data, bool self) const
 {
     if (IsInWorld())
         SendMessageToSetInRange(data, GetVisibilityRange(), self);
 }
 
-void WorldObject::SendMessageToSetInRange(WorldPacket const* data, float dist, bool /*self*/)
+void WorldObject::SendMessageToSetInRange(WorldPacket const* data, float dist, bool /*self*/) const
 {
     Trinity::MessageDistDeliverer notifier(this, data, dist);
     Cell::VisitWorldObjects(this, notifier, dist);
 }
 
-void WorldObject::SendMessageToSet(WorldPacket const* data, Player const* skipped_rcvr)
+void WorldObject::SendMessageToSet(WorldPacket const* data, Player const* skipped_rcvr) const
 {
     Trinity::MessageDistDeliverer notifier(this, data, GetVisibilityRange(), false, skipped_rcvr);
     Cell::VisitWorldObjects(this, notifier, GetVisibilityRange());
