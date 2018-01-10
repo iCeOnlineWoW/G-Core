@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -873,6 +873,16 @@ namespace WorldPackets
             PvpPrestigeRankUp(WorldPacket&& packet) : ClientPacket(CMSG_PVP_PRESTIGE_RANK_UP, std::move(packet)) { }
 
             void Read() override { }
+        };
+
+        class CloseInteraction final : public ClientPacket
+        {
+        public:
+            CloseInteraction(WorldPacket&& packet) : ClientPacket(CMSG_CLOSE_INTERACTION, std::move(packet)) { }
+
+            void Read() override;
+
+            ObjectGuid SourceGuid;
         };
     }
 }

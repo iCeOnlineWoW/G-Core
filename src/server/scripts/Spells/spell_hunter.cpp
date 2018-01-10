@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -269,37 +269,6 @@ class spell_hun_cobra_shot : public SpellScriptLoader
         }
 };
 
-// 781 - Disengage
-class spell_hun_disengage : public SpellScriptLoader
-{
-    public:
-        spell_hun_disengage() : SpellScriptLoader("spell_hun_disengage") { }
-
-        class spell_hun_disengage_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_hun_disengage_SpellScript);
-
-            SpellCastResult CheckCast()
-            {
-                Unit* caster = GetCaster();
-                if (caster->GetTypeId() == TYPEID_PLAYER && !caster->IsInCombat())
-                    return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
-
-                return SPELL_CAST_OK;
-            }
-
-            void Register() override
-            {
-                OnCheckCast += SpellCheckCastFn(spell_hun_disengage_SpellScript::CheckCast);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_hun_disengage_SpellScript();
-        }
-};
-
 // 109304 - Exhilaration
 class spell_hun_exhilaration : public SpellScriptLoader
 {
@@ -459,29 +428,58 @@ class spell_hun_masters_call : public SpellScriptLoader
                 return spellInfo->GetEffect(EFFECT_0) && ValidateSpellInfo({ SPELL_HUNTER_MASTERS_CALL_TRIGGERED, uint32(spellInfo->GetEffect(EFFECT_0)->CalcValue()) });
             }
 
+            bool Load() override
+            {
+                return GetCaster()->GetTypeId() == TYPEID_PLAYER;
+            }
+
+            SpellCastResult DoCheckCast()
+            {
+                Pet* pet = GetCaster()->ToPlayer()->GetPet();
+                ASSERT(pet); // checked in Spell::CheckCast
+
+                if (!pet->IsAlive())
+                    return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+
+                // Do a mini Spell::CheckCasterAuras on the pet, no other way of doing this
+                SpellCastResult result = SPELL_CAST_OK;
+                uint32 const unitflag = pet->GetUInt32Value(UNIT_FIELD_FLAGS);
+                if (!pet->GetCharmerGUID().IsEmpty())
+                    result = SPELL_FAILED_CHARMED;
+                else if (unitflag & UNIT_FLAG_STUNNED)
+                    result = SPELL_FAILED_STUNNED;
+                else if (unitflag & UNIT_FLAG_FLEEING)
+                    result = SPELL_FAILED_FLEEING;
+                else if (unitflag & UNIT_FLAG_CONFUSED)
+                    result = SPELL_FAILED_CONFUSED;
+
+                if (result != SPELL_CAST_OK)
+                    return result;
+
+                Unit* target = GetExplTargetUnit();
+                if (!target)
+                    return SPELL_FAILED_BAD_TARGETS;
+
+                if (!pet->IsWithinLOSInMap(target))
+                    return SPELL_FAILED_LINE_OF_SIGHT;
+
+                return SPELL_CAST_OK;
+            }
+
             void HandleDummy(SpellEffIndex /*effIndex*/)
             {
-                if (Unit* ally = GetHitUnit())
-                    if (Player* caster = GetCaster()->ToPlayer())
-                        if (Pet* target = caster->GetPet())
-                        {
-                            TriggerCastFlags castMask = TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_CASTER_AURASTATE);
-                            target->CastSpell(ally, GetEffectValue(), castMask);
-                        }
+                GetCaster()->ToPlayer()->GetPet()->CastSpell(GetHitUnit(), GetEffectValue(), true);
             }
 
             void HandleScriptEffect(SpellEffIndex /*effIndex*/)
             {
-                if (Unit* target = GetHitUnit())
-                {
-                    // Cannot be processed while pet is dead
-                    TriggerCastFlags castMask = TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_CASTER_AURASTATE);
-                    target->CastSpell(target, SPELL_HUNTER_MASTERS_CALL_TRIGGERED, castMask);
-                }
+                GetHitUnit()->CastSpell((Unit*)nullptr, SPELL_HUNTER_MASTERS_CALL_TRIGGERED, true);
             }
 
             void Register() override
             {
+                OnCheckCast += SpellCheckCastFn(spell_hun_masters_call_SpellScript::DoCheckCast);
+
                 OnEffectHitTarget += SpellEffectFn(spell_hun_masters_call_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
                 OnEffectHitTarget += SpellEffectFn(spell_hun_masters_call_SpellScript::HandleScriptEffect, EFFECT_1, SPELL_EFFECT_SCRIPT_EFFECT);
             }
@@ -805,9 +803,16 @@ class spell_hun_roar_of_sacrifice : public SpellScriptLoader
                 return ValidateSpellInfo({ SPELL_ROAR_OF_SACRIFICE_TRIGGERED });
             }
 
-            bool CheckProc(ProcEventInfo& eventInfo)
+            bool CheckProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
             {
-                return GetCaster() && (eventInfo.GetDamageInfo()->GetSchoolMask() & GetEffect(EFFECT_1)->GetMiscValue()) != 0;
+                DamageInfo* damageInfo = eventInfo.GetDamageInfo();
+                if (!damageInfo || !(damageInfo->GetSchoolMask() & aurEff->GetMiscValue()))
+                    return false;
+
+                if (!GetCaster())
+                    return false;
+
+                return true;
             }
 
             void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
@@ -820,7 +825,7 @@ class spell_hun_roar_of_sacrifice : public SpellScriptLoader
 
             void Register() override
             {
-                DoCheckProc += AuraCheckProcFn(spell_hun_roar_of_sacrifice_AuraScript::CheckProc);
+                DoCheckEffectProc += AuraCheckEffectProcFn(spell_hun_roar_of_sacrifice_AuraScript::CheckProc, EFFECT_1, SPELL_AURA_DUMMY);
                 OnEffectProc += AuraEffectProcFn(spell_hun_roar_of_sacrifice_AuraScript::HandleProc, EFFECT_1, SPELL_AURA_DUMMY);
             }
         };
@@ -1134,7 +1139,6 @@ void AddSC_hunter_spell_scripts()
     new spell_hun_aspect_cheetah();
     new spell_hun_chimera_shot();
     new spell_hun_cobra_shot();
-    new spell_hun_disengage();
     new spell_hun_exhilaration();
     new spell_hun_hunting_party();
     new spell_hun_improved_mend_pet();

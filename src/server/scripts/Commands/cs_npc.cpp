@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -296,15 +296,15 @@ public:
             ObjectGuid::LowType guid = map->GenerateLowGuid<HighGuid::Creature>();
             CreatureData& data = sObjectMgr->NewOrExistCreatureData(guid);
             data.id = id;
-            data.phaseMask = chr->GetPhaseMask();
             data.posX = chr->GetTransOffsetX();
             data.posY = chr->GetTransOffsetY();
             data.posZ = chr->GetTransOffsetZ();
             data.orientation = chr->GetTransOffsetO();
+            /// @todo: add phases
 
             Creature* creature = trans->CreateNPCPassenger(guid, &data);
 
-            creature->SaveToDB(trans->GetGOInfo()->moTransport.SpawnMap, 1 << map->GetSpawnMode(), chr->GetPhaseMask());
+            creature->SaveToDB(trans->GetGOInfo()->moTransport.SpawnMap, UI64LIT(1) << map->GetSpawnMode());
 
             sObjectMgr->AddCreatureToGrid(guid, &data);
             return true;
@@ -317,7 +317,8 @@ public:
             return false;
         }
 
-        creature->SaveToDB(map->GetId(), (1 << map->GetSpawnMode()), chr->GetPhaseMask());
+        creature->CopyPhaseFrom(chr);
+        creature->SaveToDB(map->GetId(), UI64LIT(1) << map->GetSpawnMode());
 
         ObjectGuid::LowType db_guid = creature->GetSpawnId();
 
@@ -368,6 +369,7 @@ public:
 
         char* fextendedcost = strtok(nullptr, " ");                //add ExtendedCost, default: 0
         uint32 extendedcost = fextendedcost ? atoul(fextendedcost) : 0;
+        char const* fbonuslist = strtok(nullptr, " ");
         Creature* vendor = handler->getSelectedCreature();
         if (!vendor)
         {
@@ -378,13 +380,27 @@ public:
 
         uint32 vendor_entry = vendor->GetEntry();
 
-        if (!sObjectMgr->IsVendorItemValid(vendor_entry, itemId, maxcount, incrtime, extendedcost, type, handler->GetSession()->GetPlayer()))
+        VendorItem vItem;
+        vItem.item = itemId;
+        vItem.maxcount = maxcount;
+        vItem.incrtime = incrtime;
+        vItem.ExtendedCost = extendedcost;
+        vItem.Type = type;
+
+        if (fbonuslist)
+        {
+            Tokenizer bonusListIDsTok(fbonuslist, ';');
+            for (char const* token : bonusListIDsTok)
+                vItem.BonusListIDs.push_back(int32(atol(token)));
+        }
+
+        if (!sObjectMgr->IsVendorItemValid(vendor_entry, vItem, handler->GetSession()->GetPlayer()))
         {
             handler->SetSentErrorMessage(true);
             return false;
         }
 
-        sObjectMgr->AddVendorItem(vendor_entry, itemId, maxcount, incrtime, extendedcost, type);
+        sObjectMgr->AddVendorItem(vendor_entry, vItem);
 
         ItemTemplate const* itemTemplate = sObjectMgr->GetItemTemplate(itemId);
 
@@ -754,7 +770,7 @@ public:
 
         if (CreatureData const* data = sObjectMgr->GetCreatureData(target->GetSpawnId()))
         {
-            handler->PSendSysMessage(LANG_NPCINFO_PHASES, data->phaseid, data->phaseGroup);
+            handler->PSendSysMessage(LANG_NPCINFO_PHASES, data->phaseId, data->phaseGroup);
             if (data->phaseGroup)
             {
                 std::set<uint32> _phases = target->GetPhases();

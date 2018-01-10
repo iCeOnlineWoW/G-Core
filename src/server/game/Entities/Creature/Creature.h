@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -179,7 +179,7 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool LoadCreatureFromDB(ObjectGuid::LowType spawnId, Map* map, bool addToMap = true, bool allowDuplicate = false);
         void SaveToDB();
                                                             // overriden in Pet
-        virtual void SaveToDB(uint32 mapid, uint32 spawnMask, uint32 phaseMask);
+        virtual void SaveToDB(uint32 mapid, uint64 spawnMask);
         virtual void DeleteFromDB();                        // overriden in Pet
 
         Loot loot;
@@ -319,6 +319,7 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         // Handling caster facing during spellcast
         void SetTarget(ObjectGuid const& guid) override;
         void MustReacquireTarget() { m_shouldReacquireTarget = true; } // flags the Creature for forced (client displayed) target reacquisition in the next ::Update call
+        void DoNotReacquireTarget() { m_shouldReacquireTarget = false; m_suppressedTarget = ObjectGuid::Empty; m_suppressedOrientation = 0.0f; }
         void FocusTarget(Spell const* focusSpell, WorldObject const* target);
         bool IsFocusing(Spell const* focusSpell = nullptr, bool withDelay = false);
         void ReleaseFocus(Spell const* focusSpell = nullptr, bool withDelay = true);

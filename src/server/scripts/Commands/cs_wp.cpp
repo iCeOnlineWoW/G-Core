@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -674,7 +674,7 @@ public:
             }
 
             wpCreature->CopyPhaseFrom(chr);
-            wpCreature->SaveToDB(map->GetId(), (1 << map->GetSpawnMode()), chr->GetPhaseMask());
+            wpCreature->SaveToDB(map->GetId(), UI64LIT(1) << map->GetSpawnMode());
             // To call _LoadGoods(); _LoadQuests(); CreateTrainerSpells();
             /// @todo Should we first use "Create" then use "LoadFromDB"?
             if (!wpCreature->LoadCreatureFromDB(wpCreature->GetSpawnId(), map))
@@ -887,7 +887,7 @@ public:
                 }
 
                 wpCreature->CopyPhaseFrom(chr);
-                wpCreature->SaveToDB(map->GetId(), (1 << map->GetSpawnMode()), chr->GetPhaseMask());
+                wpCreature->SaveToDB(map->GetId(), UI64LIT(1) << map->GetSpawnMode());
 
                 // Set "wpguid" column to the visual waypoint
                 stmt = WorldDatabase.GetPreparedStatement(WORLD_UPD_WAYPOINT_DATA_WPGUID);
@@ -951,8 +951,8 @@ public:
             }
 
             creature->CopyPhaseFrom(chr);
+            creature->SaveToDB(map->GetId(), UI64LIT(1) << map->GetSpawnMode());
 
-            creature->SaveToDB(map->GetId(), (1 << map->GetSpawnMode()), chr->GetPhaseMask());
             if (!creature->LoadCreatureFromDB(creature->GetSpawnId(), map))
             {
                 handler->PSendSysMessage(LANG_WAYPOINT_VP_NOTCREATED, id);
@@ -1002,8 +1002,8 @@ public:
             }
 
             creature->CopyPhaseFrom(chr);
+            creature->SaveToDB(map->GetId(), UI64LIT(1) << map->GetSpawnMode());
 
-            creature->SaveToDB(map->GetId(), (1 << map->GetSpawnMode()), chr->GetPhaseMask());
             if (!creature->LoadCreatureFromDB(creature->GetSpawnId(), map))
             {
                 handler->PSendSysMessage(LANG_WAYPOINT_NOTCREATED, id);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -480,6 +480,7 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
 
         void PlayDistanceSound(uint32 soundId, Player* target = nullptr);
         void PlayDirectSound(uint32 soundId, Player* target = nullptr);
+        void PlayDirectMusic(uint32 musicId, Player* target = nullptr);
 
         virtual void SaveRespawnTime() { }
         void AddObjectToRemoveList();
@@ -523,9 +524,14 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         GameObject* FindNearestGameObject(uint32 entry, float range) const;
         GameObject* FindNearestGameObjectOfType(GameobjectTypes type, float range) const;
 
-        void GetGameObjectListWithEntryInGrid(std::list<GameObject*>& lList, uint32 uiEntry = 0, float fMaxSearchRange = 250.0f) const;
-        void GetCreatureListWithEntryInGrid(std::list<Creature*>& lList, uint32 uiEntry = 0, float fMaxSearchRange = 250.0f) const;
-        void GetPlayerListInGrid(std::list<Player*>& lList, float fMaxSearchRange) const;
+        template <typename Container>
+        void GetGameObjectListWithEntryInGrid(Container& gameObjectContainer, uint32 entry, float maxSearchRange = 250.0f) const;
+
+        template <typename Container>
+        void GetCreatureListWithEntryInGrid(Container& creatureContainer, uint32 entry, float maxSearchRange = 250.0f) const;
+
+        template <typename Container>
+        void GetPlayerListInGrid(Container& playerContainer, float maxSearchRange) const;
 
         void DestroyForNearbyPlayers();
         virtual void UpdateObjectVisibility(bool forced = true);

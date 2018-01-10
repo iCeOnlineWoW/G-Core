@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -116,6 +116,8 @@ public:
     void SaveAccountItemAppearances(SQLTransaction& trans);
     void AddItemAppearance(Item* item);
     void AddItemAppearance(uint32 itemId, uint32 appearanceModId = 0);
+    void AddTransmogSet(uint32 transmogSetId);
+    bool IsSetCompleted(uint32 transmogSetId) const;
     void RemoveTemporaryAppearance(Item* item);
     // returns pair<hasAppearance, isTemporary>
     std::pair<bool, bool> HasItemAppearance(uint32 itemModifiedAppearanceId) const;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -649,17 +649,14 @@ class spell_sha_item_mana_surge : public SpellScriptLoader
 
             bool CheckProc(ProcEventInfo& eventInfo)
             {
-                return eventInfo.GetSpellInfo() != nullptr;
+                return eventInfo.GetProcSpell() != nullptr;
             }
 
             void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
             {
                 PreventDefaultAction();
-                SpellInfo const* spellInfo = eventInfo.GetSpellInfo();
-                if (!spellInfo)
-                    return;
 
-                std::vector<SpellPowerCost> costs = eventInfo.GetDamageInfo()->GetSpellInfo()->CalcPowerCost(GetTarget(), eventInfo.GetDamageInfo()->GetSchoolMask());
+                std::vector<SpellPowerCost> const& costs = eventInfo.GetProcSpell()->GetPowerCost();
                 auto m = std::find_if(costs.begin(), costs.end(), [](SpellPowerCost const& cost) { return cost.Power == POWER_MANA; });
                 if (m != costs.end())
                 {

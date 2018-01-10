@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -153,7 +153,7 @@ public:
         switch (action)
         {
         case GOSSIP_ACTION_TRAIN:
-            player->GetSession()->SendTrainerList(creature->GetGUID(), TRAINER_ID_ROXI_RAMROCKET);
+            player->GetSession()->SendTrainerList(creature, TRAINER_ID_ROXI_RAMROCKET);
             break;
         case GOSSIP_ACTION_TRADE:
             player->GetSession()->SendListInventory(creature->GetGUID());

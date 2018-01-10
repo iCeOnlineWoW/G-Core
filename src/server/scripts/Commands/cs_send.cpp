@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -230,7 +230,7 @@ public:
             return false;
 
         char* moneyStr = strtok(NULL, "");
-        int32 money = moneyStr ? atoi(moneyStr) : 0;
+        int64 money = moneyStr ? atoll(moneyStr) : 0;
         if (money <= 0)
             return false;
 

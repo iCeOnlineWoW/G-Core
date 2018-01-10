@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -296,7 +296,7 @@ uint32 BattlegroundMgr::CreateClientVisibleInstanceId(BattlegroundTypeId bgTypeI
 }
 
 // create a new battleground that will really be used to play
-Battleground* BattlegroundMgr::CreateNewBattleground(BattlegroundTypeId originalBgTypeId, PvpDifficultyEntry const* bracketEntry, uint8 arenaType, bool isRated)
+Battleground* BattlegroundMgr::CreateNewBattleground(BattlegroundTypeId originalBgTypeId, PVPDifficultyEntry const* bracketEntry, uint8 arenaType, bool isRated)
 {
     BattlegroundTypeId bgTypeId = GetRandomBG(originalBgTypeId);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -159,7 +159,7 @@ public:
         }
 
         // fill the gameobject data and save to the db
-        object->SaveToDB(map->GetId(), (1 << map->GetSpawnMode()), player->GetPhaseMask());
+        object->SaveToDB(map->GetId(), UI64LIT(1) << map->GetSpawnMode());
         ObjectGuid::LowType spawnId = object->GetSpawnId();
 
         // delete the old object and do a clean load from DB with a fresh new GameObject instance.

@@ -1,5 +1,5 @@
  /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -109,7 +109,7 @@ public:
 
         void SpellHit(Unit* caster, const SpellInfo* spell) override
         {
-            if (spell->SpellFamilyFlags[2] & 0x080000000 && !_tappedBySpell)
+            if (spell->SpellFamilyFlags[2] & 0x80000000 && !_tappedBySpell)
             {
                 _events.Reset();
                 _tappedBySpell = true;

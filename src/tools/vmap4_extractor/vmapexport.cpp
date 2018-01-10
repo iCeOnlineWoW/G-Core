@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -99,7 +99,7 @@ struct MapLoadInfo
         static char const* types = "siffssssshhhhhhhbbbbb";
         static uint8 const arraySizes[21] = { 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
         static DB2FieldDefault const fieldDefaults[21] = { "", uint32(0), float(0), float(0), "", "", "", "", "", uint16(0), uint16(0), uint16(0), uint16(0), uint16(0), uint16(0), uint16(0), uint8(0), uint8(0), uint8(0), uint8(0), uint8(0) };
-        static DB2Meta const meta(-1, 21, 0xC34CD39B, types, arraySizes, fieldDefaults);
+        static DB2Meta const meta(-1, 21, 0xA37A2830, types, arraySizes, fieldDefaults);
         static DB2FileLoadInfo const loadInfo(&fields[0], std::extent<decltype(fields)>::value, &meta);
         return &loadInfo;
     }
@@ -160,6 +160,25 @@ bool OpenCascStorage(int locale)
         printf("error opening casc storage : %s\n", error.what());
         return false;
     }
+}
+
+uint32 GetInstalledLocalesMask()
+{
+    try
+    {
+        boost::filesystem::path const storage_dir(boost::filesystem::canonical(input_path) / "Data");
+        CASC::StorageHandle storage = CASC::OpenStorage(storage_dir, 0);
+        if (!storage)
+            return false;
+
+        return CASC::GetInstalledLocalesMask(storage);
+    }
+    catch (boost::filesystem::filesystem_error const& error)
+    {
+        printf("Unable to determine installed locales mask: %s\n", error.what());
+    }
+
+    return 0;
 }
 
 // Local testing functions
@@ -414,10 +433,14 @@ int main(int argc, char ** argv)
                     ))
             success = (errno == EEXIST);
 
-    int FirstLocale = -1;
+    uint32 installedLocalesMask = GetInstalledLocalesMask();
+    int32 FirstLocale = -1;
     for (int i = 0; i < TOTAL_LOCALES; ++i)
     {
         if (i == LOCALE_none)
+            continue;
+
+        if (!(installedLocalesMask & WowLocaleToCascLocaleFlags[i]))
             continue;
 
         if (!OpenCascStorage(i))

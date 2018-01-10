@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -312,6 +312,7 @@ struct TC_GAME_API CreatureTemplate
     std::string  Name;
     std::string FemaleName;
     std::string  SubName;
+    std::string  TitleAlt;
     std::string  IconName;
     uint32  GossipMenuId;
     int16   minlevel;
@@ -495,14 +496,13 @@ struct EquipmentInfo
 // from `creature` table
 struct CreatureData
 {
-    CreatureData() : id(0), mapid(0), phaseMask(0), displayid(0), equipmentId(0),
+    CreatureData() : id(0), mapid(0), displayid(0), equipmentId(0),
                      posX(0.0f), posY(0.0f), posZ(0.0f), orientation(0.0f), spawntimesecs(0),
                      spawndist(0.0f), currentwaypoint(0), curhealth(0), curmana(0), movementType(0),
                      spawnMask(0), npcflag(0), unit_flags(0), unit_flags2(0), unit_flags3(0), dynamicflags(0),
-                     phaseid(0), phaseGroup(0), ScriptId(0), dbData(true) { }
+                     phaseId(0), phaseGroup(0), ScriptId(0), dbData(true) { }
     uint32 id;                                              // entry in creature_template
     uint16 mapid;
-    uint32 phaseMask;
     uint32 displayid;
     int8 equipmentId;
     float posX;
@@ -515,13 +515,13 @@ struct CreatureData
     uint32 curhealth;
     uint32 curmana;
     uint8 movementType;
-    uint32 spawnMask;
+    uint64 spawnMask;
     uint64 npcflag;
     uint32 unit_flags;                                      // enum UnitFlags mask values
     uint32 unit_flags2;                                     // enum UnitFlags2 mask values
     uint32 unit_flags3;                                     // enum UnitFlags3 mask values
     uint32 dynamicflags;
-    uint32 phaseid;
+    uint32 phaseId;
     uint32 phaseGroup;
     uint32 ScriptId;
     bool dbData;
@@ -564,14 +564,16 @@ struct CreatureAddon
 // Vendors
 struct VendorItem
 {
-    VendorItem(uint32 _item, int32 _maxcount, uint32 _incrtime, uint32 _ExtendedCost, uint8 _Type)
-        : item(_item), maxcount(_maxcount), incrtime(_incrtime), ExtendedCost(_ExtendedCost), Type(_Type) { }
+    VendorItem() : item(0), maxcount(0), incrtime(0), ExtendedCost(0), Type(0), PlayerConditionId(0), IgnoreFiltering(false) { }
 
     uint32 item;
     uint32 maxcount;                                        // 0 for infinity item amount
     uint32 incrtime;                                        // time for restore items amount if maxcount != 0
     uint32 ExtendedCost;
     uint8  Type;
+    std::vector<int32> BonusListIDs;
+    uint32 PlayerConditionId;
+    bool IgnoreFiltering;
 
     //helpers
     bool IsGoldRequired(ItemTemplate const* pProto) const;
@@ -590,9 +592,9 @@ struct VendorItemData
     }
     bool Empty() const { return m_items.empty(); }
     uint32 GetItemCount() const { return uint32(m_items.size()); }
-    void AddItem(uint32 item, int32 maxcount, uint32 ptime, uint32 ExtendedCost, uint8 type)
+    void AddItem(VendorItem vItem)
     {
-        m_items.emplace_back(item, maxcount, ptime, ExtendedCost, type);
+        m_items.emplace_back(std::move(vItem));
     }
     bool RemoveItem(uint32 item_id, uint8 type);
     VendorItem const* FindItemCostPair(uint32 item_id, uint32 extendedCost, uint8 type) const;
