@@ -25,8 +25,7 @@
 
 # http://www.slproweb.com/products/Win32OpenSSL.html
 
-set(OPENSSL_EXPECTED_VERSION "1.0")
-set(OPENSSL_MAX_VERSION "1.1")
+set(OPENSSL_EXPECTED_VERSION "1.1.0a")
 
 SET(_OPENSSL_ROOT_HINTS
   "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OpenSSL (32-bit)_is1;Inno Setup: App Path]"
@@ -80,90 +79,90 @@ IF(WIN32 AND NOT CYGWIN)
     # libeay32MD.lib is identical to ../libeay32.lib, and
     # ssleay32MD.lib is identical to ../ssleay32.lib
 
-    FIND_LIBRARY(LIB_EAY_DEBUG
+    FIND_LIBRARY(LIB_CRYPTO_DEBUG
       NAMES
-        libeay32MDd libeay32
+        libcrypto64MDd libcrypto64 libcrypto32MDd libcrypto32
       PATHS
         ${OPENSSL_ROOT_DIR}/lib/VC
     )
 
-    FIND_LIBRARY(LIB_EAY_RELEASE
+    FIND_LIBRARY(LIB_CRYPTO_RELEASE
       NAMES
-        libeay32MD libeay32
+        libcrypto64MD libcrypto64 libcrypto32MD libcrypto32
       PATHS
         ${OPENSSL_ROOT_DIR}/lib/VC
     )
 
-    FIND_LIBRARY(SSL_EAY_DEBUG
+    FIND_LIBRARY(LIB_SSL_DEBUG
       NAMES
-        ssleay32MDd ssleay32 ssl
+        libssl64MDd libssl64 libssl32MDd libssl32 ssl
       PATHS
         ${OPENSSL_ROOT_DIR}/lib/VC
     )
 
-    FIND_LIBRARY(SSL_EAY_RELEASE
+    FIND_LIBRARY(LIB_SSL_RELEASE
       NAMES
-        ssleay32MD ssleay32 ssl
+        libssl64MD libssl64 libssl32MD libssl32 ssl
       PATHS
         ${OPENSSL_ROOT_DIR}/lib/VC
     )
 
     if( CMAKE_CONFIGURATION_TYPES OR CMAKE_BUILD_TYPE )
       set( OPENSSL_LIBRARIES
-        optimized ${SSL_EAY_RELEASE} optimized ${LIB_EAY_RELEASE}
-        debug ${SSL_EAY_DEBUG} debug ${LIB_EAY_DEBUG}
+        optimized ${LIB_SSL_RELEASE} optimized ${LIB_CRYPTO_RELEASE}
+        debug ${LIB_SSL_DEBUG} debug ${LIB_CRYPTO_DEBUG}
       )
     else()
       set( OPENSSL_LIBRARIES
-        ${SSL_EAY_RELEASE}
-        ${LIB_EAY_RELEASE}
+        ${LIB_SSL_RELEASE}
+        ${LIB_CRYPTO_RELEASE}
       )
     endif()
 
-    MARK_AS_ADVANCED(SSL_EAY_DEBUG SSL_EAY_RELEASE LIB_EAY_DEBUG LIB_EAY_RELEASE)
+    MARK_AS_ADVANCED(LIB_SSL_DEBUG LIB_SSL_RELEASE LIB_CRYPTO_DEBUG LIB_CRYPTO_RELEASE)
   ELSEIF(MINGW)
 
     # same player, for MingW
-    FIND_LIBRARY(LIB_EAY
+    FIND_LIBRARY(LIB_CRYPTO
       NAMES
-        libeay32
+        libcrypto64 libcrypto32
       PATHS
         ${OPENSSL_ROOT_DIR}/lib/MinGW
     )
 
-    FIND_LIBRARY(SSL_EAY NAMES
+    FIND_LIBRARY(LIB_SSL
       NAMES
-        ssleay32
+        libssl64 libssl32
       PATHS
         ${OPENSSL_ROOT_DIR}/lib/MinGW
     )
 
-    MARK_AS_ADVANCED(SSL_EAY LIB_EAY)
+    MARK_AS_ADVANCED(LIB_CRYPTO LIB_SSL)
 
     set( OPENSSL_LIBRARIES
-      ${SSL_EAY}
-      ${LIB_EAY}
+      ${LIB_CRYPTO}
+      ${LIB_SSL}
     )
   ELSE(MSVC)
     # Not sure what to pick for -say- intel, let's use the toplevel ones and hope someone report issues:
-    FIND_LIBRARY(LIB_EAY
+    FIND_LIBRARY(LIB_CRYPTO
       NAMES
-        libeay32
+        libcrypto64 libcrypto32
       PATHS
         ${OPENSSL_ROOT_DIR}/lib
         ${OPENSSL_ROOT_DIR}/lib/VC
     )
 
-    FIND_LIBRARY(SSL_EAY
+    FIND_LIBRARY(LIB_SSL
       NAMES
-        ssleay32
+        libssl64 libssl32
       PATHS
         ${OPENSSL_ROOT_DIR}/lib
         ${OPENSSL_ROOT_DIR}/lib/VC
     )
-    MARK_AS_ADVANCED(SSL_EAY LIB_EAY)
+    MARK_AS_ADVANCED(LIB_SSL LIB_CRYPTO)
 
-    SET( OPENSSL_LIBRARIES ${SSL_EAY} ${LIB_EAY} )
+    SET( OPENSSL_LIBRARIES ${LIB_SSL} ${LIB_CRYPTO} )
   ENDIF(MSVC)
 ELSE(WIN32 AND NOT CYGWIN)
   FIND_LIBRARY(OPENSSL_SSL_LIBRARIES NAMES ssl ssleay32 ssleay32MD)
@@ -221,7 +220,7 @@ if (OPENSSL_INCLUDE_DIR)
   endif (_OPENSSL_VERSION)
 
   include(EnsureVersion)
-  ENSURE_VERSION_RANGE("${OPENSSL_EXPECTED_VERSION}" "${OPENSSL_VERSION}" "${OPENSSL_MAX_VERSION}" OPENSSL_VERSION_OK)
+  ENSURE_VERSION("${OPENSSL_EXPECTED_VERSION}" "${OPENSSL_VERSION}" OPENSSL_VERSION_OK)
   if (NOT OPENSSL_VERSION_OK)
       message(FATAL_ERROR "TrinityCore needs OpenSSL version ${OPENSSL_EXPECTED_VERSION} but found version ${OPENSSL_VERSION}")
   endif()
