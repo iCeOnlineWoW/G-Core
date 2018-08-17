@@ -24,41 +24,41 @@
 template<HashCreateFn HashCreator, uint32 DigestLength>
 HmacHash<HashCreator, DigestLength>::HmacHash(uint32 len, uint8 const* seed)
 {
-    _ctx = HMAC_CTX_new();
-    HMAC_Init_ex(_ctx, seed, len, HashCreator(), NULL);
+    HMAC_CTX_init(&_ctx);
+    HMAC_Init_ex(&_ctx, seed, len, HashCreator(), NULL);
     memset(_digest, 0, DigestLength);
 }
 
 template<HashCreateFn HashCreator, uint32 DigestLength>
 HmacHash<HashCreator, DigestLength>::~HmacHash()
 {
-    HMAC_CTX_free(_ctx);
+    HMAC_CTX_cleanup(&_ctx);
 }
 
 template<HashCreateFn HashCreator, uint32 DigestLength>
 void HmacHash<HashCreator, DigestLength>::UpdateData(const std::string &str)
 {
-    HMAC_Update(_ctx, (uint8 const*)str.c_str(), str.length());
+    HMAC_Update(&_ctx, (uint8 const*)str.c_str(), str.length());
 }
 
 template<HashCreateFn HashCreator, uint32 DigestLength>
 void HmacHash<HashCreator, DigestLength>::UpdateData(const uint8* data, size_t len)
 {
-    HMAC_Update(_ctx, data, len);
+    HMAC_Update(&_ctx, data, len);
 }
 
 template<HashCreateFn HashCreator, uint32 DigestLength>
 void HmacHash<HashCreator, DigestLength>::Finalize()
 {
     uint32 length = 0;
-    HMAC_Final(_ctx, _digest, &length);
+    HMAC_Final(&_ctx, _digest, &length);
     ASSERT(length == DigestLength);
 }
 
 template<HashCreateFn HashCreator, uint32 DigestLength>
 uint8* HmacHash<HashCreator, DigestLength>::ComputeHash(BigNumber* bn)
 {
-    HMAC_Update(_ctx, bn->AsByteArray().get(), bn->GetNumBytes());
+    HMAC_Update(&_ctx, bn->AsByteArray().get(), bn->GetNumBytes());
     Finalize();
     return _digest;
 }

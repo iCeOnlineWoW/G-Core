@@ -93,11 +93,7 @@ bool Trinity::Crypto::RSA::LoadFromString(std::string const& keyPem, KeyTag)
 BigNumber Trinity::Crypto::RSA::GetModulus() const
 {
     BigNumber bn;
-
-    const BIGNUM *rsa_n;
-    RSA_get0_key(_rsa, &rsa_n, nullptr, nullptr);
-
-    BN_copy(bn.BN(), rsa_n);
+    BN_copy(bn.BN(), _rsa->n);
     return bn;
 }
 
